@@ -1,35 +1,51 @@
 services:
   frontend:
     image: ghcr.io/ds-testkit/frontend:latest
+    platform: linux/arm64
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      # SvelteKit behind nginx (see adapter-node docs)
+      ORIGIN: ${PUBLIC_ORIGIN:-https://velikoss.ru}
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      # Browser uses same origin; SSR/container calls backend by service name
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      NODE_ENV: production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
       interval: 30s
       timeout: 10s
-      start_period: 20s
+      start_period: 30s
       retries: 3
 
   backend:
     image: ghcr.io/ds-testkit/backend:latest
+    platform: linux/arm64
     environment:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
+      SKIP_APP_MIGRATIONS: "1"
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://velikoss.ru}
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
-      start_period: 40s
-      retries: 3
+      start_period: 90s
+      retries: 5
 
   postgres:
     image: postgres:16
