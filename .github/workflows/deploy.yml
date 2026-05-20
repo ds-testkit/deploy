@@ -25,8 +25,16 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -euo pipefail
             cd ~/deploy
             git pull
             docker compose pull
-            docker compose up -d
+            docker compose up -d --remove-orphans
+            echo "=== Image platforms (expect linux/arm64) ==="
+            docker image inspect ghcr.io/ds-testkit/frontend:latest --format '{{.Os}}/{{.Architecture}}' || true
+            docker image inspect ghcr.io/ds-testkit/backend:latest --format '{{.Os}}/{{.Architecture}}' || true
+            echo "=== Service health ==="
+            docker compose ps
+            docker compose exec -T backend curl -sf http://localhost:8000/api/v1/health || echo "backend health: FAIL"
+            docker compose exec -T frontend node -e "fetch('http://127.0.0.1:3000').then(r=>console.log('frontend',r.status)).catch(e=>{console.error(e);process.exit(1)})" || echo "frontend health: FAIL"
             docker image prune -f
