@@ -13,15 +13,20 @@ flowchart LR
   ai[ai-service :8100]
   pg[(postgres)]
   s3[(minio)]
+  kuma[uptime-kuma :3001]
 
   browser --> nginx
   nginx -->|/| fe
   nginx -->|/api/v1/| be
   nginx -->|/api/ai/| ai
+  nginx -->|status.<домен>| kuma
   fe -->|/files/id SSR| be
   be --> pg
   be -->|S3 API| s3
   ai -.->|JWT = SECRET_KEY| be
+  kuma -.->|healthcheck| fe
+  kuma -.->|healthcheck| be
+  kuma -.->|healthcheck| ai
 ```
 
 | Путь снаружи | Куда внутри |
@@ -30,7 +35,7 @@ flowchart LR
 | `/api/v1/` | FastAPI (`backend`) |
 | `/api/ai/` | ai-service |
 | `/files/{id}` | frontend → backend `/api/v1/tasks/files/{id}/content` |
-| `/status/` | Uptime Kuma |
+| `status.<домен>` | Uptime Kuma |
 
 ## Репозитории
 
@@ -79,17 +84,40 @@ nano .env   # см. таблицу ниже
 
 ### 3. TLS (Let's Encrypt)
 
-Перед первым HTTPS нужны сертификаты в `./certbot/conf`. Пример (замените email и домен):
+Перед получением сертификатов временно закомментируйте блок `server { listen 443 ssl; ... }`
+в `nginx/nginx.conf` — nginx не запустится если сертификатов ещё нет.
+
+Поднимите стек:
 
 ```bash
-docker compose run --rm certbot certonly --webroot \
+docker compose up -d nginx certbot
+```
+
+Получите сертификат для основного домена:
+
+```bash
+docker compose run --rm --entrypoint "certbot" certbot certonly --webroot \
   -w /var/www/certbot \
   -d velikoss.ru \
   --email you@example.com \
   --agree-tos --no-eff-email
 ```
 
-Пока сертификатов нет, можно временно поднять только HTTP или использовать уже выданные файлы в `certbot/conf`.
+Получите сертификат для субдомена Uptime Kuma:
+
+```bash
+docker compose run --rm --entrypoint "certbot" certbot certonly --webroot \
+  -w /var/www/certbot \
+  -d status.velikoss.ru \
+  --email you@example.com \
+  --agree-tos --no-eff-email
+```
+
+Раскомментируйте блок `server 443` обратно и перезапустите nginx:
+
+```bash
+docker compose restart nginx
+```
 
 ### 4. Поднять стек
 
@@ -204,7 +232,7 @@ bun install && bun run dev    # :5173
 
 ## Мониторинг (Uptime Kuma)
 
-- UI: `https://<домен>/status/` (прокси в nginx)
+- UI: `https://status.<домен>/` (отдельный субдомен, прокси в nginx)
 - Прямой порт: `3001` (не открывать наружу без необходимости)
 
 Рекомендуемые проверки:
@@ -212,8 +240,29 @@ bun install && bun run dev    # :5173
 | URL | Тип |
 |-----|-----|
 | `https://<домен>/` | HTTP(s) |
-| `https://<домен>/api/v1/health` | HTTP(s) JSON |
+| `https://<домен>/api/v1/ready` | HTTP(s) JSON (проверяет backend + БД) |
 | `https://<домен>/api/ai/health` | HTTP(s) JSON |
+
+## Известные проблемы
+
+### Конфликт с системным nginx
+Если на VPS установлен nginx пакетом — он конфликтует с nginx-контейнером на порту 80/443:
+
+```bash
+sudo systemctl stop nginx
+sudo systemctl disable nginx
+sudo apt remove nginx -y && sudo apt purge nginx -y
+```
+
+### localhost vs 127.0.0.1 в healthcheck
+В alpine-образах `localhost` резолвится как `::1` (IPv6), а сервисы слушают только IPv4. В healthcheck всегда используйте явный адрес `127.0.0.1`.
+
+### alembic stamp head
+Если база уже содержит таблицы, но таблица `alembic_version` отсутствует — Alembic упадёт с `DuplicateTableError`:
+
+```bash
+docker compose run --rm backend alembic stamp head
+```
 
 ## GitHub Secrets (workflow Deploy)
 
