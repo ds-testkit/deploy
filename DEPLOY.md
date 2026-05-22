@@ -65,7 +65,9 @@ curl -sf https://velikoss.ru/api/ai/health
 
 - Сервис `minio` в compose, данные в volume `minio_data`.
 - Backend: `S3_ENDPOINT=http://minio:9000` (внутри Docker).
-- Браузер (presigned URL): `S3_PUBLIC_ENDPOINT=https://velikoss.ru/minio` → nginx `location /minio/` → MinIO.
+- Браузер (presigned URL): `S3_PUBLIC_ENDPOINT=https://velikoss.ru/minio` → nginx `location /minio/` (rewrite срезает префикс) → MinIO path `/ttm-files/...`.
+- `MINIO_SERVER_URL` в compose = тот же `S3_PUBLIC_ENDPOINT` (подпись presigned URL).
+- Presigned 404 при рабочей загрузке: обычно nginx отдал в MinIO путь с `/minio/` (нужен `rewrite` в `nginx.conf`, см. комментарий в `location /minio/`).
 - Смените `S3_ACCESS_KEY` / `S3_SECRET_KEY` в `.env` (не оставляйте `minioadmin` в проде).
 - Консоль MinIO (опционально): порт `9001` только внутри VPS, наружу не открывать.
 
