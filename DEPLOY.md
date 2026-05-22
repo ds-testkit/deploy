@@ -29,7 +29,9 @@ curl -sf https://velikoss.ru/api/ai/health
 - Образ: `ghcr.io/ds-testkit/ai`, порт внутри сети `8100`.
 - Nginx: `https://velikoss.ru/api/ai/` → `ai-service` (SSE, `proxy_buffering off` в `nginx/nginx.conf`).
 - `JWT_SECRET` в compose = `SECRET_KEY` бекенда (обязательно задать в `.env`).
-- LLM: `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, `AI_BASE_URL` (для Ollama).
+- LLM: `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, `AI_BASE_URL`.
+  - **VseGPT:** `AI_PROVIDER=openai`, `AI_BASE_URL=https://api.vsegpt.ru`, ключ и модель из личного кабинета VseGPT.
+  - **Ollama:** `AI_PROVIDER=ollama`, `AI_BASE_URL=http://ollama:11434`.
 
 ### Uptime Kuma
 
