@@ -188,7 +188,7 @@ cp .env.example .env
 bun install && bun run dev    # :8100
 ```
 
-### Frontend (`ds-testkit/`)
+### Frontend (`frontend/`)
 
 ```bash
 cp .env.example .env
@@ -201,14 +201,6 @@ bun install && bun run dev    # :5173
 
 - MinIO только для backend (`http://minio:9000`)
 - Скачивание: `/files/{id}` → backend `/api/v1/tasks/files/{id}/content`
-
-Типичные проблемы:
-
-| Симптом | Решение |
-|---------|---------|
-| 401 на `/files/...` | Нет cookie `ttm_token` |
-| 502 Storage unreachable | MinIO не поднят, неверные `S3_*` в `.env`, backend не видит `minio:9000` |
-| Volume MinIO «in use» | `docker rm` контейнер minio, затем `docker volume rm deploy_minio_data` |
 
 ## Мониторинг (Uptime Kuma)
 
