@@ -31,11 +31,6 @@ jobs:
             git pull
             docker compose pull
             docker compose up -d --remove-orphans
-            echo "=== Image platforms (expect linux/arm64) ==="
-            docker image inspect ghcr.io/ds-testkit/frontend:latest --format '{{.Os}}/{{.Architecture}}' || true
-            docker image inspect ghcr.io/ds-testkit/backend:latest --format '{{.Os}}/{{.Architecture}}' || true
-            docker image inspect ghcr.io/ds-testkit/ai:latest --format '{{.Os}}/{{.Architecture}}' || true
-            echo "=== Service health ==="
             docker compose ps
             docker compose exec -T backend curl -sf http://localhost:8000/api/v1/health || echo "backend health: FAIL"
             docker compose exec -T ai-service wget -qO- http://localhost:8100/health || echo "ai-service health: FAIL"
