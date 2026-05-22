@@ -59,6 +59,19 @@ curl -sf https://velikoss.ru/api/ai/health
 
 ## `.env` на сервере
 
-Скопируйте из `.env.example`: `DB_*`, `SECRET_KEY`, `PUBLIC_ORIGIN`, `CORS_ORIGINS`, `AI_*`.
+Скопируйте из `.env.example`: `DB_*`, `SECRET_KEY`, `PUBLIC_ORIGIN`, `CORS_ORIGINS`, `S3_*`, `AI_*`.
+
+### MinIO (файлы задач)
+
+- Сервис `minio` в compose, данные в volume `minio_data`.
+- Backend: `S3_ENDPOINT=http://minio:9000` (внутри Docker).
+- Браузер (presigned URL): `S3_PUBLIC_ENDPOINT=https://velikoss.ru/minio` → nginx `location /minio/` → MinIO.
+- Смените `S3_ACCESS_KEY` / `S3_SECRET_KEY` в `.env` (не оставляйте `minioadmin` в проде).
+- Консоль MinIO (опционально): порт `9001` только внутри VPS, наружу не открывать.
+
+```bash
+docker compose up -d minio
+docker compose exec -T backend python -c "from services.file_service import ensure_bucket; ensure_bucket(); print('ok')"
+```
 
 После первого деплоя ai: `docker compose pull ai-service && docker compose up -d ai-service nginx`.

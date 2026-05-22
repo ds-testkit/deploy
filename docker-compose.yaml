@@ -40,9 +40,18 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://velikoss.ru}
       PUBLIC_APP_URL: ${PUBLIC_ORIGIN:-https://velikoss.ru}
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-https://velikoss.ru/minio}
+      S3_BUCKET: ${S3_BUCKET:-ttm-files}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_USE_SSL: ${S3_USE_SSL:-false}
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
@@ -71,6 +80,18 @@ services:
       timeout: 10s
       start_period: 15s
       retries: 3
+
+  minio:
+    image: minio/minio:latest
+    platform: linux/arm64
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_SERVER_URL: ${S3_PUBLIC_ENDPOINT:-https://velikoss.ru/minio}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
 
   postgres:
     image: postgres:16
@@ -126,4 +147,5 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:
   uptime_kuma_data:
