@@ -9,6 +9,7 @@ on:
     types:
       - backend-updated
       - frontend-updated
+      - ai-updated
 
 jobs:
   deploy:
@@ -33,8 +34,10 @@ jobs:
             echo "=== Image platforms (expect linux/arm64) ==="
             docker image inspect ghcr.io/ds-testkit/frontend:latest --format '{{.Os}}/{{.Architecture}}' || true
             docker image inspect ghcr.io/ds-testkit/backend:latest --format '{{.Os}}/{{.Architecture}}' || true
+            docker image inspect ghcr.io/ds-testkit/ai:latest --format '{{.Os}}/{{.Architecture}}' || true
             echo "=== Service health ==="
             docker compose ps
             docker compose exec -T backend curl -sf http://localhost:8000/api/v1/health || echo "backend health: FAIL"
+            docker compose exec -T ai-service wget -qO- http://localhost:8100/health || echo "ai-service health: FAIL"
             docker compose exec -T frontend node -e "fetch('http://127.0.0.1:3000').then(r=>console.log('frontend',r.status)).catch(e=>{console.error(e);process.exit(1)})" || echo "frontend health: FAIL"
             docker image prune -f
